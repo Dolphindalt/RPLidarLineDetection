@@ -1,44 +1,126 @@
 package main
 
 import (
-	"bufio"
-	"fmt"
-	"os"
-	"strconv"
-	"strings"
+	"log"
+
+	"gonum.org/v1/gonum/mat"
 )
 
-func main() {
-	test()
+// Line it is a god damn line
+type Line struct {
+	p1 Vector2f
+	p2 Vector2f
 }
 
-func test() {
-	f, err := os.Open("test.txt")
-	if err != nil {
-		fmt.Println("bababa")
-		return
-	}
-	defer f.Close()
+func main() {
+	lineSegmentDetection()
+}
 
-	scanner := bufio.NewScanner(f)
+// holy shit
+func orthogonalLSQ(pc *PointCloud, a *Vector2f, b *Vector2f) complex128 {
+	a = pc.MeanValue()
 
-	var points []Point
-
-	for scanner.Scan() {
-		splitLine := strings.Split(scanner.Text(), " ")
-		//quality, _ := strconv.Atoi(splitLine[0])
-		angle, _ := strconv.ParseFloat(splitLine[1], 64)
-		dist, _ := strconv.ParseFloat(splitLine[2], 64)
-		PPoint := PolarPoint{dist, angle}
-		points = append(points, CartesianPointFrom(PPoint))
+	points := mat.NewDense(len(pc.points), 3, nil)
+	for i := 0; i < 3; i++ {
+		points.Set(i, 0, pc.points[i].x)
+		points.Set(i, 1, pc.points[i].y)
+		points.Set(i, 2, 0.0)
 	}
 
-	arrayToImageSpace(points, 4000)
-
-	for _, p := range points {
-		fmt.Println(p.x, p.y)
+	centered := mat.NewDense(3, 3, nil)
+	for i := 0; i < 3; i++ {
+		col := centered.ColView(i)
+		sum := 0.0
+		for k := 0; k < col.Len(); k++ {
+			sum += col.AtVec(k)
+		}
+		sum /= float64(col.Len()) // sum is the mean of the column
+		for j := 0; j < 3; j++ {
+			centered.Set(j, i, centered.At(j, i)-sum)
+		}
 	}
 
-	h := NewHoughTransform(8000, 8000, points)
+	centered.Mul(centered, centered.T())
 
+	var eig mat.Eigen
+	ok := eig.Factorize(centered, true, false)
+	if !ok { // what the hell is an eigendecomposition
+		log.Fatal("Eigendecomposition failed")
+	}
+	eigvecs := eig.LeftVectors()
+
+	b.x = eigvecs.At(0, 2)
+	b.y = eigvecs.At(1, 2)
+	rc := eig.Values(nil)
+	return rc[2]
+}
+
+func lineSegmentDetection() []*Line {
+	var lines []*Line
+
+	optDx := 0.0
+	optLinesToDetect := 20
+	optMinVotes := 10
+	// number of icosahedron subdivisions for direction discretization
+	granularity := 4
+
+	var cloud *PointCloud
+	cloud.ReadFromFile("test.txt")
+	var minP, maxP, shiftedMinP, shiftedMaxP *Vector2f
+	cloud.minMaxPoints(minP, maxP)
+	d := (VectorSubtract(maxP, minP).Magnitude())
+	if d == 0.0 {
+		log.Fatalf("All points in the point cloud are identical\n")
+	}
+	cloud.toImageSpace()
+	cloud.minMaxPoints(shiftedMinP, shiftedMaxP)
+
+	if optDx == 0.0 {
+		optDx = d / 64.0
+	} else if optDx >= d {
+		log.Fatalf("dx is too large\n")
+	}
+
+	hough := NewHough(shiftedMinP, shiftedMaxP, optDx, granularity)
+	hough.add(cloud)
+
+	// iterative hough transform aka algorithm 1
+	linesDetected := 0
+	voteCount := 0
+	var rc complex128
+	rc = 0.0
+	var Y *PointCloud
+	for {
+		var a, b *Vector2f // point and direction
+		hough.subtract(Y)
+		voteCount = hough.getLine(a, b)
+
+		cloud.PointsCloseToLine(a, b, optDx, Y)
+		rc = orthogonalLSQ(Y, a, b)
+		if rc == 0.0 {
+			break
+		}
+
+		cloud.PointsCloseToLine(a, b, optDx, Y)
+		voteCount = len(Y.points)
+		if voteCount < optMinVotes {
+			break
+		}
+
+		rc = orthogonalLSQ(Y, a, b)
+		if rc == 0.0 {
+			break
+		}
+		a = VectorAdd(a, cloud.shift)
+
+		linesDetected++
+
+		lines = append(lines, &Line{*a, *b})
+
+		cloud.RemovePoints(Y)
+
+		if !(len(cloud.points) > 1 && (optLinesToDetect == 0 || optLinesToDetect > linesDetected)) {
+			break
+		}
+	} // WHHHAHHHAAAAAAAAAAAAAAAAA
 }

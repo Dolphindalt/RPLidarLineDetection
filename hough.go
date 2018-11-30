@@ -4,163 +4,107 @@ import (
 	"math"
 )
 
-const (
-	maxTheta         int     = 180
-	thetaStep        float64 = math.Pi / float64(maxTheta)
-	neighborhoodSize int     = 16
-)
-
+// Hough the hough transform representation
 type Hough struct {
-	width        int
-	height       int
-	accumulator  [][]int
-	doubleHeight int
-	houghHeight  int
-	centerX      float64
-	centerY      float64
+	votingSpace []int
+	circle      *Circle
+	numB        int
+	dx          float64
+	maxX        float64
+	numX        int
 }
 
-type HoughLine struct {
-	theta            float64
-	accumulatorTheta int
-	p                int
-	x                int
-	y                int
-}
+// NewHough asks for a description of the parameter space and allocates the accumulator
+func NewHough(minP *Vector2f, maxP *Vector2f, vardx float64, circleGranularity int) *Hough {
+	var circle *Circle
+	circle.FromIcosahedron(circleGranularity)
+	numB := len(circle.vertices)
 
-type Line struct {
-	x1 int16
-	x2 int16
-	y1 int16
-	y2 int16
-}
-
-//=======================================
-/*
-Point Stuff.
-Run the toImageSpace functions to convert to useable values.
-Run the toPolarSpace to put it back into Lidar info.
-*/
-type PolarPoint struct {
-	r     float64
-	theta float64
-}
-
-func CartesianPointFrom(pp PolarPoint) Point {
-	return Point{int(pp.r * math.Cos(pp.theta)), int(pp.r * math.Cos(pp.theta))}
-}
-
-type Point struct {
-	x int
-	y int
-}
-
-func (p *Point) toImageSpace(offset int) {
-	p.x += offset
-	p.y += offset
-}
-
-func (p *Point) toDiscreteSpace(offset int) {
-	p.x -= offset
-	p.y -= offset
-}
-
-func arrayToImageSpace(points []Point, offset int) {
-	for i := 0; i < len(points); i++ {
-		points[i].toImageSpace(offset)
+	maxX := math.Max(maxP.Magnitude(), minP.Magnitude())
+	rangeX := 2 * maxX
+	dx := vardx
+	if dx == 0.0 {
+		dx = rangeX / 64.0
 	}
+	numX := int(roundNearest(rangeX / dx))
+
+	votingSpace := make([]int, numX*numX*numB)
+
+	return &Hough{votingSpace, circle, numB, dx, maxX, numX}
 }
 
-func arrayToDiscreteSpace(points []Point, offset int) {
-	for i := 0; i < len(points); i++ {
-		points[i].toDiscreteSpace(offset)
-	}
-}
-
-//========================================
-
-var sinCache = make([]float64, maxTheta)
-var cosCache = make([]float64, maxTheta)
-
-func HoughInit() {
-	for i := 0; i < maxTheta; i++ {
-		thetaReal := float64(i) * thetaStep
-		sinCache[i] = math.Sin(thetaReal)
-		cosCache[i] = math.Cos(thetaReal)
-	}
-}
-
-func NewHoughTransform(width int, height int, points []Point) *Hough {
-	centerX := float64(width) / 2
-	centerY := float64(height) / 2
-	houghHeight := (int)(math.Sqrt2 * math.Max(float64(height), float64(width)))
-	doubleHeight := houghHeight * 2
-
-	accumulator := make([][]int, maxTheta)
-	for i := 0; i < maxTheta; i++ {
-		accumulator[i] = make([]int, doubleHeight)
-	}
-
-	// Fills the accumulator array of the Hough.
-	for _, p := range points {
-		for j := 0; j < maxTheta; j++ {
-			h := int(((float64(p.x) - centerX) * cosCache[j]) + ((float64(p.y) - centerY) * sinCache[j]))
-			h += houghHeight
-			if h < 0 || h >= houghHeight {
-				continue
-			}
-			accumulator[j][h]++
+// getLine returns a line that was voted on the most
+// a is the point, b is direction
+func (h *Hough) getLine(a *Vector2f, b *Vector2f) int {
+	votes := 0
+	index := 0
+	for i := 0; i < len(h.votingSpace); i++ {
+		if h.votingSpace[i] > votes {
+			votes = h.votingSpace[i]
+			index = i
 		}
 	}
 
-	return &Hough{width, height, accumulator, doubleHeight, houghHeight, centerX, centerY}
+	x := int(index / (h.numX * h.numB))
+	index -= int(x * h.numX * h.numB)
+	xr := float64(x)*h.dx - h.maxX
+
+	y := int(index / h.numB)
+	index -= int(y * h.numB)
+	yr := float64(y)*h.dx - h.maxX
+
+	b = h.circle.vertices[index]
+	// equation 3 follows, with the 3rd dimension ignored
+	a.x = xr*(1-(b.x*b.x)) - yr*(b.x*b.y)
+	a.y = xr*(-(b.x * b.y)) + yr*(1-(b.y*b.y))
+
+	return votes
 }
 
-func (h *Hough) InfiniteLines(threshold int) []HoughLine {
-	var lines []Hough
+// add adds all points from the cloud into voting space
+func (h *Hough) add(p *PointCloud) {
+	for j := 0; j < len(p.points); j++ {
+		h.pointVote(p.points[j], true)
+	}
+}
 
-	for r := 0; r < maxTheta; r++ {
-		for p := neighborhoodSize; p < h.doubleHeight; p++ {
-		OuterLoop:
-			if h.accumulator[r][p] > threshold {
-				peak := h.accumulator[r][p]
-				for dx := -neighborhoodSize; dx <= neighborhoodSize; dx++ {
-					for dy := -neighborhoodSize; dy <= neighborhoodSize; dy++ {
-						dr := r + dx
-						dp := p + dy
-						if dr < 0 {
-							dr += maxTheta
-						} else if dt >= maxTheta {
-							dr -= maxTheta
-						}
-						if h.accumulator[dr][dp] > peak {
-							p++
-							break OuterLoop
-						}
-					}
-				}
-				/*
-										double theta = ((double)r) * theta_step;
-					                	if(list->max_length == list->current_length)
-					                {
-					                    list->max_length += 20;
-					                    list->lines = realloc(list->lines, sizeof(line_t) * list->max_length);
-					                }
-					                	line_t line;
-					               		line.accumulator_theta = r;
-					                	line.theta = theta;
-					                	line.r = p;
-										list->lines[list->current_length++] = line;
-				*/
+// subtract subtracts all points from the cloud from the voting space
+func (h *Hough) subtract(p *PointCloud) {
+	for j := 0; j < len(p.points); j++ {
+		h.pointVote(p.points[j], false)
+	}
+}
+
+// pointVote adds or subtracts one point from the voting space
+func (h *Hough) pointVote(point *Vector2f, add bool) {
+	for j := 0; j < len(h.circle.vertices); j++ {
+		b := h.circle.vertices[j]
+		// the denominator in equation 2 is just zero due to no z plane
+		// x' left side of equation 2
+		xNew := ((1 - (b.x * b.x)) * point.x) - ((b.x * b.y) * point.y) - (b.x)
+		// y' left side of equation 2
+		yNew := ((b.x * b.y) * point.x) + ((1 - (b.y * b.y)) * point.y) - (b.y)
+
+		xi := int(roundNearest((xNew + h.maxX) / h.dx))
+		yi := int(roundNearest((yNew + h.maxX) / h.dx))
+
+		// a one dimensional voting space based on tree tables
+		// xi * planes * direction + yi * direction + loop
+		index := (xi * h.numX * h.numB) + (yi * h.numB) + j
+
+		if index < len(h.votingSpace) {
+			if add {
+				h.votingSpace[index]++
+			} else {
+				h.votingSpace[index]--
 			}
-
 		}
 	}
-	return list
 }
 
-/*
-func (h *Hough) LineSegments(inifinteLines []HoughLine) []Line {
-
+func roundNearest(n float64) float64 {
+	if n > 0.0 {
+		return math.Floor(n + 0.5)
+	}
+	return math.Ceil(n - 0.5)
 }
-*/
