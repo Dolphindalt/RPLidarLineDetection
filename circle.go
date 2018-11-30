@@ -64,67 +64,27 @@ func (c *Circle) getIcosahedron() {
 	vec.x = v
 	vec.y = -tau
 	c.vertices = append(c.vertices, vec) // 12
-	// holy fucking fuck
-	c.triangles = append(c.triangles, 0)
-	c.triangles = append(c.triangles, 1)
-	c.triangles = append(c.triangles, 2) // 1
-	c.triangles = append(c.triangles, 0)
-	c.triangles = append(c.triangles, 1)
-	c.triangles = append(c.triangles, 3) // 2
-	c.triangles = append(c.triangles, 0)
-	c.triangles = append(c.triangles, 2)
-	c.triangles = append(c.triangles, 4) // 3
-	c.triangles = append(c.triangles, 0)
-	c.triangles = append(c.triangles, 4)
-	c.triangles = append(c.triangles, 6) // 4
-	c.triangles = append(c.triangles, 0)
-	c.triangles = append(c.triangles, 3)
-	c.triangles = append(c.triangles, 6) // 5
-	c.triangles = append(c.triangles, 1)
-	c.triangles = append(c.triangles, 2)
-	c.triangles = append(c.triangles, 5) // 6
-	c.triangles = append(c.triangles, 1)
-	c.triangles = append(c.triangles, 3)
-	c.triangles = append(c.triangles, 7) // 7
-	c.triangles = append(c.triangles, 1)
-	c.triangles = append(c.triangles, 5)
-	c.triangles = append(c.triangles, 7) // 8
-	c.triangles = append(c.triangles, 2)
-	c.triangles = append(c.triangles, 4)
-	c.triangles = append(c.triangles, 8) // 9
-	c.triangles = append(c.triangles, 2)
-	c.triangles = append(c.triangles, 5)
-	c.triangles = append(c.triangles, 8) // 10
-	c.triangles = append(c.triangles, 3)
-	c.triangles = append(c.triangles, 6)
-	c.triangles = append(c.triangles, 9) // 11
-	c.triangles = append(c.triangles, 3)
-	c.triangles = append(c.triangles, 7)
-	c.triangles = append(c.triangles, 9) // 12
-	c.triangles = append(c.triangles, 4)
-	c.triangles = append(c.triangles, 8)
-	c.triangles = append(c.triangles, 10) // 13
-	c.triangles = append(c.triangles, 8)
-	c.triangles = append(c.triangles, 10)
-	c.triangles = append(c.triangles, 11) // 14
-	c.triangles = append(c.triangles, 5)
-	c.triangles = append(c.triangles, 8)
-	c.triangles = append(c.triangles, 11) // 15
-	c.triangles = append(c.triangles, 5)
-	c.triangles = append(c.triangles, 7)
-	c.triangles = append(c.triangles, 11) // 16
-	c.triangles = append(c.triangles, 7)
-	c.triangles = append(c.triangles, 9)
-	c.triangles = append(c.triangles, 11) // 17
-	c.triangles = append(c.triangles, 9)
-	c.triangles = append(c.triangles, 10)
-	c.triangles = append(c.triangles, 11) // 18
-	c.triangles = append(c.triangles, 6)
-	c.triangles = append(c.triangles, 9)
-	c.triangles = append(c.triangles, 10) // 19
-	c.triangles = append(c.triangles, 4)
-	c.triangles = append(c.triangles, 6)
-	c.triangles = append(c.triangles, 10) // 20
+	c.triangles = append(c.triangles, 	0,1,2,
+										0,1,3,
+										0,2,4,
+										0,4,6,
+										0,3,6,
+										1,2,5,
+										1,2,7,
+										1,5,7,
+										2,4,8,
+										2,5,8,
+										3,6,9,
+										3,4,9,
+										4,8,10,
+										8,10,11,
+										5,8,11,
+										5,7,11,
+										7,9,11,
+										9,10,11,
+										6,9,10,
+										4,6,10
+						)
 }
 
 // To the compiler: no no no somebody else do it I will not
