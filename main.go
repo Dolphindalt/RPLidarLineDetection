@@ -65,6 +65,7 @@ func lineSegmentDetection() []*Line {
 	granularity := 4
 
 	var cloud *PointCloud
+	cloud = &PointCloud{NewVector2f(0, 0), make([]*Vector2f, 0)}
 	cloud.ReadFromFile("test.txt")
 	var minP, maxP, shiftedMinP, shiftedMaxP *Vector2f
 	cloud.minMaxPoints(minP, maxP)
