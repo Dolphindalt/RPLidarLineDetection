@@ -123,4 +123,6 @@ func lineSegmentDetection() []*Line {
 			break
 		}
 	} // WHHHAHHHAAAAAAAAAAAAAAAAA
+
+	return lines
 }

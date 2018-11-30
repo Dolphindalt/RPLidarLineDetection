@@ -30,6 +30,7 @@ func (c *Circle) getIcosahedron() {
 	var vec *Vector2f
 	vec.x = -v
 	vec.y = tau
+
 	c.vertices = append(c.vertices, vec) // 1
 	vec.x = v
 	vec.y = tau
@@ -64,27 +65,26 @@ func (c *Circle) getIcosahedron() {
 	vec.x = v
 	vec.y = -tau
 	c.vertices = append(c.vertices, vec) // 12
-	c.triangles = append(c.triangles, 	0,1,2,
-										0,1,3,
-										0,2,4,
-										0,4,6,
-										0,3,6,
-										1,2,5,
-										1,2,7,
-										1,5,7,
-										2,4,8,
-										2,5,8,
-										3,6,9,
-										3,4,9,
-										4,8,10,
-										8,10,11,
-										5,8,11,
-										5,7,11,
-										7,9,11,
-										9,10,11,
-										6,9,10,
-										4,6,10
-						)
+	c.triangles = append(c.triangles, 0, 1, 2,
+		0, 1, 3,
+		0, 2, 4,
+		0, 4, 6,
+		0, 3, 6,
+		1, 2, 5,
+		1, 2, 7,
+		1, 5, 7,
+		2, 4, 8,
+		2, 5, 8,
+		3, 6, 9,
+		3, 4, 9,
+		4, 8, 10,
+		8, 10, 11,
+		5, 8, 11,
+		5, 7, 11,
+		7, 9, 11,
+		9, 10, 11,
+		6, 9, 10,
+		4, 6, 10)
 }
 
 // To the compiler: no no no somebody else do it I will not
