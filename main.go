@@ -13,7 +13,11 @@ type Line struct {
 }
 
 func main() {
-	lineSegmentDetection()
+	lines := lineSegmentDetection()
+	log.Printf("LL %v\n", len(lines))
+	for _, l := range lines {
+		log.Printf("x1 %v y1 %v x2 %v y2 %v\n", l.p1.x, l.p1.y, l.p2.x, l.p2.y)
+	}
 }
 
 // holy shit
@@ -52,6 +56,7 @@ func orthogonalLSQ(pc *PointCloud, a *Vector2f, b *Vector2f) (complex128, *Point
 	b.x = eigvecs.At(0, 2)
 	b.y = eigvecs.At(1, 2)
 	rc := eig.Values(nil)
+	log.Printf("Rc: %v", rc)
 	return rc[2], pc, a, b
 }
 
