@@ -17,11 +17,11 @@ func main() {
 }
 
 // holy shit
-func orthogonalLSQ(pc *PointCloud, a *Vector2f, b *Vector2f) complex128 {
+func orthogonalLSQ(pc *PointCloud, a *Vector2f, b *Vector2f) (complex128, *PointCloud, *Vector2f, *Vector2f) {
 	a = pc.MeanValue()
 
 	points := mat.NewDense(len(pc.points), 3, nil)
-	for i := 0; i < 3; i++ {
+	for i := 0; i < len(pc.points); i++ {
 		points.Set(i, 0, pc.points[i].x)
 		points.Set(i, 1, pc.points[i].y)
 		points.Set(i, 2, 0.0)
@@ -52,7 +52,7 @@ func orthogonalLSQ(pc *PointCloud, a *Vector2f, b *Vector2f) complex128 {
 	b.x = eigvecs.At(0, 2)
 	b.y = eigvecs.At(1, 2)
 	rc := eig.Values(nil)
-	return rc[2]
+	return rc[2], pc, a, b
 }
 
 func lineSegmentDetection() []*Line {
@@ -70,13 +70,15 @@ func lineSegmentDetection() []*Line {
 	var minP, maxP, shiftedMinP, shiftedMaxP *Vector2f
 	minP = NewVector2f(0, 0)
 	maxP = NewVector2f(0, 0)
-	cloud.minMaxPoints(minP, maxP)
+	shiftedMinP = NewVector2f(0, 0)
+	shiftedMaxP = NewVector2f(0, 0)
+	minP, maxP = cloud.minMaxPoints(minP, maxP)
 	d := (VectorSubtract(maxP, minP).Magnitude())
 	if d == 0.0 {
 		log.Fatalf("All points in the point cloud are identical\n")
 	}
 	cloud.toImageSpace()
-	cloud.minMaxPoints(shiftedMinP, shiftedMaxP)
+	shiftedMinP, shiftedMaxP = cloud.minMaxPoints(shiftedMinP, shiftedMaxP)
 
 	if optDx == 0.0 {
 		optDx = d / 64.0
@@ -92,25 +94,26 @@ func lineSegmentDetection() []*Line {
 	voteCount := 0
 	var rc complex128
 	rc = 0.0
-	var Y *PointCloud
+	Y := &PointCloud{NewVector2f(0, 0), []*Vector2f{}}
 	for {
-		var a, b *Vector2f // point and direction
+		a := NewVector2f(0, 0) // point
+		b := NewVector2f(0, 0) // direction
 		hough.subtract(Y)
-		voteCount = hough.getLine(a, b)
+		voteCount, a, b = hough.getLine(a, b)
 
-		cloud.PointsCloseToLine(a, b, optDx, Y)
-		rc = orthogonalLSQ(Y, a, b)
+		a, b, Y = cloud.PointsCloseToLine(a, b, optDx, Y)
+		rc, Y, a, b = orthogonalLSQ(Y, a, b)
 		if rc == 0.0 {
 			break
 		}
 
-		cloud.PointsCloseToLine(a, b, optDx, Y)
+		a, b, Y = cloud.PointsCloseToLine(a, b, optDx, Y)
 		voteCount = len(Y.points)
 		if voteCount < optMinVotes {
 			break
 		}
 
-		rc = orthogonalLSQ(Y, a, b)
+		rc, Y, a, b = orthogonalLSQ(Y, a, b)
 		if rc == 0.0 {
 			break
 		}

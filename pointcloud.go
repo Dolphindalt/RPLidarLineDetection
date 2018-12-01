@@ -18,7 +18,10 @@ type PointCloud struct {
 // toImageSpace translates the point cloud to image space
 func (p *PointCloud) toImageSpace() {
 	var p1, p2, newshift *Vector2f
-	p.minMaxPoints(p1, p2)
+	p1 = NewVector2f(0, 0)
+	p2 = NewVector2f(0, 0)
+	newshift = NewVector2f(0, 0)
+	p1, p2 = p.minMaxPoints(p1, p2)
 	newshift = ScalarQuotient(VectorAdd(p1, p2), 2.0)
 	for i := 0; i < len(p.points); i++ {
 		p.points[i] = VectorSubtract(p.points[i], newshift)
@@ -26,20 +29,19 @@ func (p *PointCloud) toImageSpace() {
 	p.shift = VectorAdd(p.shift, newshift)
 }
 
-// meanValue is also center of gravity
+// MeanValue is also center of gravity
 func (p *PointCloud) MeanValue() *Vector2f {
-	var v *Vector2f
+	v := NewVector2f(0, 0)
 	for i := 0; i < len(p.points); i++ {
 		v = VectorAdd(v, p.points[i])
 	}
 	if len(p.points) > 0 {
 		return ScalarQuotient(v, float64(len(p.points)))
-	} else {
-		return v
 	}
+	return v
 }
 
-func (p *PointCloud) minMaxPoints(minPoint *Vector2f, maxPoint *Vector2f) {
+func (p *PointCloud) minMaxPoints(minPoint *Vector2f, maxPoint *Vector2f) (*Vector2f, *Vector2f) {
 	if len(p.points) > 0 {
 		minPoint = p.points[0]
 		maxPoint = p.points[1]
@@ -63,6 +65,7 @@ func (p *PointCloud) minMaxPoints(minPoint *Vector2f, maxPoint *Vector2f) {
 		minPoint = NewVector2f(0, 0)
 		maxPoint = NewVector2f(0, 0)
 	}
+	return minPoint, maxPoint
 }
 
 // ReadFromFile reads a pointcloud from a gorplidar scan
@@ -87,7 +90,7 @@ func (p *PointCloud) ReadFromFile(fileName string) {
 }
 
 // PointsCloseToLine stores points dx close to line (a, b) in y
-func (p *PointCloud) PointsCloseToLine(a *Vector2f, b *Vector2f, dx float64, y *PointCloud) {
+func (p *PointCloud) PointsCloseToLine(a *Vector2f, b *Vector2f, dx float64, y *PointCloud) (*Vector2f, *Vector2f, *PointCloud) {
 	y.points = y.points[:0]
 	for i := 0; i < len(p.points); i++ {
 		t := ScalarProduct(b, VectorSubtract(p.points[i], a))
@@ -96,6 +99,7 @@ func (p *PointCloud) PointsCloseToLine(a *Vector2f, b *Vector2f, dx float64, y *
 			y.points = append(y.points, p.points[i])
 		}
 	}
+	return a, b, y
 }
 
 // RemovePoints removes points in y from the point cloud

@@ -17,6 +17,7 @@ type Hough struct {
 // NewHough asks for a description of the parameter space and allocates the accumulator
 func NewHough(minP *Vector2f, maxP *Vector2f, vardx float64, circleGranularity int) *Hough {
 	var circle *Circle
+	circle = &Circle{[]*Vector2f{}, []int{}}
 	circle.FromIcosahedron(circleGranularity)
 	numB := len(circle.vertices)
 
@@ -35,7 +36,7 @@ func NewHough(minP *Vector2f, maxP *Vector2f, vardx float64, circleGranularity i
 
 // getLine returns a line that was voted on the most
 // a is the point, b is direction
-func (h *Hough) getLine(a *Vector2f, b *Vector2f) int {
+func (h *Hough) getLine(a *Vector2f, b *Vector2f) (int, *Vector2f, *Vector2f) {
 	votes := 0
 	index := 0
 	for i := 0; i < len(h.votingSpace); i++ {
@@ -58,7 +59,7 @@ func (h *Hough) getLine(a *Vector2f, b *Vector2f) int {
 	a.x = xr*(1-(b.x*b.x)) - yr*(b.x*b.y)
 	a.y = xr*(-(b.x * b.y)) + yr*(1-(b.y*b.y))
 
-	return votes
+	return votes, a, b
 }
 
 // add adds all points from the cloud into voting space

@@ -27,7 +27,7 @@ func (c *Circle) getIcosahedron() {
 	v := 1 / norm
 	tau := math.Phi / norm
 
-	var vec *Vector2f
+	vec := NewVector2f(0, 0)
 	vec.x = -v
 	vec.y = tau
 
