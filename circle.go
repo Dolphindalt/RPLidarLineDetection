@@ -89,7 +89,6 @@ func (c *Circle) getIcosahedron() {
 	)
 }
 
-// To the compiler: no no no somebody else do it I will not
 func (c *Circle) subDivide() {
 	verticesLength := len(c.vertices)
 	var norm float64
