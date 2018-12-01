@@ -30,6 +30,7 @@ func (c *Circle) getIcosahedron() {
 	var vec *Vector2f
 	vec.x = -v
 	vec.y = tau
+
 	c.vertices = append(c.vertices, vec) // 1
 	vec.x = v
 	vec.y = tau
@@ -64,112 +65,72 @@ func (c *Circle) getIcosahedron() {
 	vec.x = v
 	vec.y = -tau
 	c.vertices = append(c.vertices, vec) // 12
-	// holy fucking fuck
-	c.triangles = append(c.triangles, 0)
-	c.triangles = append(c.triangles, 1)
-	c.triangles = append(c.triangles, 2) // 1
-	c.triangles = append(c.triangles, 0)
-	c.triangles = append(c.triangles, 1)
-	c.triangles = append(c.triangles, 3) // 2
-	c.triangles = append(c.triangles, 0)
-	c.triangles = append(c.triangles, 2)
-	c.triangles = append(c.triangles, 4) // 3
-	c.triangles = append(c.triangles, 0)
-	c.triangles = append(c.triangles, 4)
-	c.triangles = append(c.triangles, 6) // 4
-	c.triangles = append(c.triangles, 0)
-	c.triangles = append(c.triangles, 3)
-	c.triangles = append(c.triangles, 6) // 5
-	c.triangles = append(c.triangles, 1)
-	c.triangles = append(c.triangles, 2)
-	c.triangles = append(c.triangles, 5) // 6
-	c.triangles = append(c.triangles, 1)
-	c.triangles = append(c.triangles, 3)
-	c.triangles = append(c.triangles, 7) // 7
-	c.triangles = append(c.triangles, 1)
-	c.triangles = append(c.triangles, 5)
-	c.triangles = append(c.triangles, 7) // 8
-	c.triangles = append(c.triangles, 2)
-	c.triangles = append(c.triangles, 4)
-	c.triangles = append(c.triangles, 8) // 9
-	c.triangles = append(c.triangles, 2)
-	c.triangles = append(c.triangles, 5)
-	c.triangles = append(c.triangles, 8) // 10
-	c.triangles = append(c.triangles, 3)
-	c.triangles = append(c.triangles, 6)
-	c.triangles = append(c.triangles, 9) // 11
-	c.triangles = append(c.triangles, 3)
-	c.triangles = append(c.triangles, 7)
-	c.triangles = append(c.triangles, 9) // 12
-	c.triangles = append(c.triangles, 4)
-	c.triangles = append(c.triangles, 8)
-	c.triangles = append(c.triangles, 10) // 13
-	c.triangles = append(c.triangles, 8)
-	c.triangles = append(c.triangles, 10)
-	c.triangles = append(c.triangles, 11) // 14
-	c.triangles = append(c.triangles, 5)
-	c.triangles = append(c.triangles, 8)
-	c.triangles = append(c.triangles, 11) // 15
-	c.triangles = append(c.triangles, 5)
-	c.triangles = append(c.triangles, 7)
-	c.triangles = append(c.triangles, 11) // 16
-	c.triangles = append(c.triangles, 7)
-	c.triangles = append(c.triangles, 9)
-	c.triangles = append(c.triangles, 11) // 17
-	c.triangles = append(c.triangles, 9)
-	c.triangles = append(c.triangles, 10)
-	c.triangles = append(c.triangles, 11) // 18
-	c.triangles = append(c.triangles, 6)
-	c.triangles = append(c.triangles, 9)
-	c.triangles = append(c.triangles, 10) // 19
-	c.triangles = append(c.triangles, 4)
-	c.triangles = append(c.triangles, 6)
-	c.triangles = append(c.triangles, 10) // 20
+	c.triangles = append(c.triangles,
+		0, 1, 2,
+		0, 1, 3,
+		0, 2, 4,
+		0, 4, 6,
+		0, 3, 6,
+		1, 2, 5,
+		1, 2, 7,
+		1, 5, 7,
+		2, 4, 8,
+		2, 5, 8,
+		3, 6, 9,
+		3, 4, 9,
+		4, 8, 10,
+		8, 10, 11,
+		5, 8, 11,
+		5, 7, 11,
+		7, 9, 11,
+		9, 10, 11,
+		6, 9, 10,
+		4, 6, 10,
+	)
 }
 
-// To the compiler: no no no somebody else do it I will not
-func (cir *Circle) subDivide() {
-	verticesLength := len(cir.vertices)
+func (c *Circle) subDivide() {
+	verticesLength := len(c.vertices)
 	var norm float64
-	num := len(cir.triangles) / 3
+	num := len(c.triangles) / 3
 	// subdividing those triangles
 	for i := 0; i < num; i++ {
-		var a, b, c, d, e, f *Vector2f
+		var A, B, C, D, E, F *Vector2f
 		var ai, bi, ci, di, ei, fi int
-		ai = cir.triangles[0]
-		bi = cir.triangles[1]
-		ci = cir.triangles[2]
-		cir.triangles = cir.triangles[3:] // deque first 3
-		a = cir.vertices[ai]
-		b = cir.vertices[bi]
-		c = cir.vertices[ci]
+		ai = c.triangles[0]
+		bi = c.triangles[1]
+		ci = c.triangles[2]
+		c.triangles = c.triangles[3:] // deque first 3
+		A = c.vertices[ai]
+		B = c.vertices[bi]
+		C = c.vertices[ci]
 		// d = a + b
-		d = VectorAdd(a, b)
-		norm = d.Magnitude()
-		d = ScalarQuotient(d, norm)
+		D = VectorAdd(A, B)
+		norm = D.Magnitude()
+		D = ScalarQuotient(D, norm)
 		// e = b + c
-		e = VectorAdd(b, c)
-		norm = e.Magnitude()
-		e = ScalarQuotient(e, norm)
+		E = VectorAdd(B, C)
+		norm = E.Magnitude()
+		E = ScalarQuotient(E, norm)
 		// f = c + a
-		f = VectorAdd(c, a)
-		norm = f.Magnitude()
-		f = ScalarQuotient(f, norm)
+		F = VectorAdd(C, A)
+		norm = F.Magnitude()
+		F = ScalarQuotient(F, norm)
 		// add new stuff to triangles
 		foundD := false
 		foundE := false
 		foundF := false
-		for j := verticesLength; j < len(cir.vertices); j++ {
-			if VectorEquals(cir.vertices[j], d) {
+		for j := verticesLength; j < len(c.vertices); j++ {
+			if VectorEquals(c.vertices[j], D) {
 				foundD = true
 				di = j
 				continue
 			}
-			if VectorEquals(cir.vertices[j], e) {
+			if VectorEquals(c.vertices[j], E) {
 				foundE = true
 				continue
 			}
-			if VectorEquals(cir.vertices[j], f) {
+			if VectorEquals(c.vertices[j], F) {
 				foundF = true
 				fi = j
 				continue
@@ -177,33 +138,33 @@ func (cir *Circle) subDivide() {
 		}
 
 		if !foundD {
-			di = len(cir.vertices)
-			cir.vertices = append(cir.vertices, d)
+			di = len(c.vertices)
+			c.vertices = append(c.vertices, D)
 		}
 		if !foundE {
-			ei = len(cir.vertices)
-			cir.vertices = append(cir.vertices, e)
+			ei = len(c.vertices)
+			c.vertices = append(c.vertices, E)
 		}
 		if !foundF {
-			fi = len(cir.vertices)
-			cir.vertices = append(cir.vertices, f)
+			fi = len(c.vertices)
+			c.vertices = append(c.vertices, F)
 		}
 
-		cir.triangles = append(cir.triangles, ai)
-		cir.triangles = append(cir.triangles, di)
-		cir.triangles = append(cir.triangles, fi)
+		c.triangles = append(c.triangles, ai)
+		c.triangles = append(c.triangles, di)
+		c.triangles = append(c.triangles, fi)
 
-		cir.triangles = append(cir.triangles, di)
-		cir.triangles = append(cir.triangles, bi)
-		cir.triangles = append(cir.triangles, ei)
+		c.triangles = append(c.triangles, di)
+		c.triangles = append(c.triangles, bi)
+		c.triangles = append(c.triangles, ei)
 
-		cir.triangles = append(cir.triangles, fi)
-		cir.triangles = append(cir.triangles, ei)
-		cir.triangles = append(cir.triangles, ci)
+		c.triangles = append(c.triangles, fi)
+		c.triangles = append(c.triangles, ei)
+		c.triangles = append(c.triangles, ci)
 
-		cir.triangles = append(cir.triangles, fi)
-		cir.triangles = append(cir.triangles, di)
-		cir.triangles = append(cir.triangles, ei)
+		c.triangles = append(c.triangles, fi)
+		c.triangles = append(c.triangles, di)
+		c.triangles = append(c.triangles, ei)
 	} // AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAHHHHHHHHHHHHH
 }
 
