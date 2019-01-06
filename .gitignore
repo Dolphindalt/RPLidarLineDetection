@@ -1,0 +1,6 @@
+*.class
+cv
+a.out
+*.o
+.vscode/
+*.png

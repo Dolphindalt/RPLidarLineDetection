@@ -2,127 +2,115 @@ package main
 
 import (
 	"bufio"
+	"errors"
 	"log"
 	"math"
 	"os"
 	"strconv"
 	"strings"
+
+	"github.com/Dolphindalt/gorplidar"
+	"github.com/fogleman/gg"
+	"github.com/go-gl/mathgl/mgl64"
 )
 
-// PointCloud represents
+const (
+	scanCycles int = 3
+)
+
+// PointCloud stores a translation of, and all the of, the points
 type PointCloud struct {
-	shift  *Vector2f
-	points []*Vector2f
+	shift  mgl64.Vec2
+	points []mgl64.Vec2
 }
 
-// toImageSpace translates the point cloud to image space
-func (p *PointCloud) toImageSpace() {
-	var p1, p2, newshift *Vector2f
-	p1 = NewVector2f(0, 0)
-	p2 = NewVector2f(0, 0)
-	newshift = NewVector2f(0, 0)
-	p1, p2 = p.minMaxPoints(p1, p2)
-	newshift = ScalarQuotient(VectorAdd(p1, p2), 2.0)
-	for i := 0; i < len(p.points); i++ {
-		p.points[i] = VectorSubtract(p.points[i], newshift)
+// NewPointCloudFromLidar constructs a PointCloud by performing a lidar scan
+// PRECONDITION: Lidar connected and motor spinning
+func NewPointCloudFromLidar(lidar *gorplidar.RPLidar) (*PointCloud, error) {
+	if lidar.Connected == false || lidar.MotorActive == false {
+		return nil, errors.New("Tried to construct PointCloud, but lidar not connected or spinning")
 	}
-	p.shift = VectorAdd(p.shift, newshift)
+	scanResults, err := lidar.StartScan(scanCycles)
+	if err != nil {
+		return nil, err
+	}
+	cloud := &PointCloud{mgl64.Vec2{0, 0}, []mgl64.Vec2{}}
+	for _, p := range scanResults {
+		cloud.points = append(cloud.points, mgl64.Vec2{float64(p.X), float64(p.Y)})
+	}
+	return cloud, nil
 }
 
-// MeanValue is also center of gravity
-func (p *PointCloud) MeanValue() *Vector2f {
-	v := NewVector2f(0, 0)
-	for i := 0; i < len(p.points); i++ {
-		v = VectorAdd(v, p.points[i])
-	}
-	if len(p.points) > 0 {
-		return ScalarQuotient(v, float64(len(p.points)))
-	}
-	return v
-}
-
-func (p *PointCloud) minMaxPoints(minPoint *Vector2f, maxPoint *Vector2f) (*Vector2f, *Vector2f) {
-	if len(p.points) > 0 {
-		minPoint = p.points[0]
-		maxPoint = p.points[1]
-
-		for i := 0; i < len(p.points); i++ {
-			cv := p.points[i]
-			if minPoint.x > cv.x {
-				minPoint.x = cv.x
-			}
-			if minPoint.y > cv.y {
-				minPoint.y = cv.y
-			}
-			if maxPoint.x < cv.x {
-				maxPoint.x = cv.x
-			}
-			if maxPoint.y < cv.y {
-				maxPoint.y = cv.y
-			}
-		}
-	} else {
-		minPoint = NewVector2f(0, 0)
-		maxPoint = NewVector2f(0, 0)
-	}
-	return minPoint, maxPoint
-}
-
-// ReadFromFile reads a pointcloud from a gorplidar scan
-func (p *PointCloud) ReadFromFile(fileName string) {
+// NewPointCloudFromFile constructs a PointCloud from a given file
+// This function is designed for testing and debugging
+func NewPointCloudFromFile(fileName string) *PointCloud {
 	file, err := os.Open(fileName)
 	if err != nil {
-		log.Fatalf("Failed to read point cloud from file: %v\n", err)
+		log.Fatalf("Failed to read PointCloud from file: %v\n", err)
 	}
 	defer file.Close()
-
+	cloud := &PointCloud{mgl64.Vec2{0, 0}, []mgl64.Vec2{}}
 	scanner := bufio.NewScanner(file)
-
 	for scanner.Scan() {
 		splitLine := strings.Split(scanner.Text(), " ")
 		if len(splitLine) != 3 {
-			continue // skip other stuff that may be in the file
-		} // TODO implement a quality check here
+			continue // to skip junk that may exist in the file
+		}
 		angle, _ := strconv.ParseFloat(splitLine[1], 64)
 		distance, _ := strconv.ParseFloat(splitLine[2], 64)
-		p.points = append(p.points, NewVector2f(math.Cos(angle)*distance, math.Sin(angle)*distance))
+		cloud.points = append(cloud.points, mgl64.Vec2{math.Cos(angle*(math.Pi/180.0)) * distance, math.Sin(angle*(math.Pi/180.0)) * distance})
 	}
+	return cloud
 }
 
-// PointsCloseToLine stores points dx close to line (a, b) in y
-func (p *PointCloud) PointsCloseToLine(a *Vector2f, b *Vector2f, dx float64, y *PointCloud) (*Vector2f, *Vector2f, *PointCloud) {
-	y.points = y.points[:0]
+// toImageSpace translates the point cloud so that the center of the
+// image is relative to the center of the first quardrant.
+func (p *PointCloud) toImageSpace() {
+	min, _ := p.minMaxPoints()
+	newShift := min
 	for i := 0; i < len(p.points); i++ {
-		t := ScalarProduct(b, VectorSubtract(p.points[i], a))
-		d := VectorSubtract(p.points[i], VectorAdd(a, ScalarMultiplication(b, t)))
-		if d.Magnitude() <= dx {
-			y.points = append(y.points, p.points[i])
-		}
+		p.points[i] = p.points[i].Sub(min)
 	}
-	return a, b, y
+	p.shift = p.shift.Add(newShift)
 }
 
-// RemovePoints removes points in y from the point cloud
-// the order of the points must be the same both clouds
-func (p *PointCloud) RemovePoints(y *PointCloud) {
-	if len(y.points) == 0 {
-		return
-	}
-	var newPoints []*Vector2f
-	i := 0
-	j := 0
-	// the assumption of order is made here
-	for ; i < len(p.points) && j < len(y.points); i++ {
-		if p.points[i] == y.points[j] {
-			j++
-		} else {
-			newPoints = append(newPoints, p.points[i])
+// minMaxPoints returns two Vec2 representing the max and min values of
+// each axis of the point cloud.
+func (p *PointCloud) minMaxPoints() (mgl64.Vec2, mgl64.Vec2) {
+	if len(p.points) > 0 {
+		min := p.points[0]
+		max := p.points[1]
+		for i := 0; i < len(p.points); i++ {
+			cmp := p.points[i]
+			if min[0] > cmp[0] {
+				min[0] = cmp[0]
+			}
+			if min[1] > cmp[1] {
+				min[1] = cmp[1]
+			}
+			if max[0] < cmp[0] {
+				max[0] = cmp[0]
+			}
+			if max[1] < cmp[1] {
+				max[1] = cmp[1]
+			}
 		}
+		return min, max
 	}
-	// copy other points after y is traversed
-	for i = 0; i < len(p.points); i++ {
-		newPoints = append(newPoints, p.points[i])
-	}
+	return mgl64.Vec2{0, 0}, mgl64.Vec2{0, 0}
+}
 
-	p.points = newPoints
+func (p *PointCloud) saveAsImage(nameExt string, pointScale float64, scaleFactor float64) {
+	_, max := p.minMaxPoints()
+	dc := gg.NewContext(int(max.X()*scaleFactor), int(max.Y()*scaleFactor))
+	dc.SetRGB(0, 0, 0)
+	dc.DrawRectangle(0, 0, float64(dc.Width()), float64(dc.Height()))
+	dc.Fill()
+	dc.SetRGB(1, 1, 1)
+	for i := 0; i < len(p.points); i++ {
+		l := p.points[i]
+		dc.DrawPoint(l.X()*scaleFactor, l.Y()*scaleFactor, 1*pointScale)
+	}
+	dc.Fill()
+	dc.SavePNG(nameExt)
 }
