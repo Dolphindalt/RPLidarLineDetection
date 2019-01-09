@@ -3,4 +3,5 @@ cv
 a.out
 *.o
 .vscode/
-*.png
+lines.png
+pointcloud.png
