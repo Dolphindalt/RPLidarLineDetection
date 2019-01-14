@@ -15,7 +15,7 @@ import (
 )
 
 const (
-	scanCycles int = 3
+	scanCycles int = 5
 )
 
 // PointCloud stores a translation of, and all the of, the points
