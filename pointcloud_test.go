@@ -9,7 +9,7 @@ func TestMinMax(t *testing.T) {
 	pc := NewPointCloudFromFile("testdata.txt")
 	min, max := pc.minMaxPoints()
 	t.Logf("Min: %v Max: %v\n", min, max)
-	if min > max {
+	if min.X() > max.X() || min.Y() > max.Y() {
 		t.Fatalf("Min is greater than max")
 	}
 }
