@@ -1,7 +1,6 @@
 package main
 
 import (
-	"math"
 	"os"
 	"testing"
 )
@@ -10,11 +9,8 @@ func TestMinMax(t *testing.T) {
 	pc := NewPointCloudFromFile("testdata.txt")
 	min, max := pc.minMaxPoints()
 	t.Logf("Min: %v Max: %v\n", min, max)
-	if math.Floor(min.X()) != -1243 && math.Floor(min.Y()) != 344 {
-		t.Fatalf("Min point computed incorrectly\n")
-	}
-	if math.Floor(max.X()) != -768 && math.Floor(max.Y()) != 1843 {
-		t.Fatalf("Max point computed incorrectly\n")
+	if min > max {
+		t.Fatalf("Min is greater than max")
 	}
 }
 
